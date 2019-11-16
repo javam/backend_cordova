@@ -5,9 +5,9 @@ include 'config.php';
 $error_username = "Пользователь с таким username уже существует";
 $error_email = "Пользователь с таким email уже существует";
 
-$email = $_GET["email"];
-$username = $_GET["username"];
-$pass = $_GET["pass"];
+$email = $_POST["email"];
+$username = $_POST["username"];
+$pass = $_POST["pass"];
 
 if( R::count('users','username = ?', array($username)) > 0 ){
     echo $error_username;

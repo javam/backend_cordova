@@ -11,7 +11,7 @@ $instagram = $_POST['instagram'];
 $country = $_POST['country'];
 $city = $_POST['city'];
 
-$token = $_GET["token"];
+$token = $_POST["token"];
 
 if ($action == "edit") {
 // $query = "UPDATE users SET nickname = '$nickName', 

@@ -4,11 +4,11 @@ include 'config.php';
 
 $limit_photos = 5;
 
-$type = $_GET["type"];
-$page_num = $_GET['page_num'];
+$type = $_POST["type"];
+$page_num = $_POST['page_num'];
 
-$token = $_GET["token"];
-$photo_id = $_GET["photo_id"];
+$token = $_POST["token"];
+$photo_id = $_POST["photo_id"];
 
 $user = R::findOne('users','token = ?',array($token));
 //TODO: вынести бин likes сюда, но возможно нужна проверка на наличие photo_id
@@ -19,15 +19,30 @@ switch ($type) {
     foreach($followers as $follower){
         $followers_ids[] = $follower->follow_id;
     }
-
-    $photos = R::findLike('photos',array('user_id' => $followers_ids),'LIMIT ?,?',array(($page_num*$limit_photos),$limit_photos));
+    if($followers_ids){
+    $photos = R::findLike('photos',array('user_id' => $followers_ids),' LIMIT ?,?',array(($page_num*$limit_photos),$limit_photos));
     getPhoto($photos);
+    } 
+    // echo json_encode($followers);
         break; 
     
     case 'flow':
     $photos=R::findAll('photos','ORDER BY id DESC LIMIT ?,?',array(($page_num*$limit_photos),$limit_photos));
     getPhoto($photos);
         break;
+
+    case 'add_open':
+    $photo=R::load('photos',$photo_id);
+    $photo->open++;
+    R::store($photo);
+    break;    
+
+    case 'view_photo':
+    $photo=R::load('photos',$photo_id);
+    $user=R::load('users',$photo->user_id);
+    $send[] = array($photo, $user);
+        echo json_encode($send);
+    break;    
 
     case 'trend':
         # code...
@@ -58,10 +73,13 @@ switch ($type) {
 
 function getPhoto($photos){   
     global $user;           
-        foreach($photos as $row){
-            $is_liked = R::findOne('likes','user_id = ? AND photo_id = ?',array($user->id, $row->id));
-            $name = R::findOne('users','id = ?', array($row->user_id))['name'];
-            $send[] = array($row->src, $name, $row->likes, $row->id, $is_liked->id);
+        foreach($photos as $photo){
+            $photo = R::load('photos',$photo->id);
+            $photo->views++;
+            R::store($photo);
+            $is_liked_by_user = R::findOne('likes','user_id = ? AND photo_id = ?',array($user->id, $photo->id));
+            $name = R::findOne('users','id = ?', array($photo->user_id))['name'];
+            $send[] = array($photo->src, $name, $photo->likes, $photo->id, $is_liked_by_user->id);
         }   
     echo json_encode($send);
 }

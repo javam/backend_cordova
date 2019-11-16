@@ -2,49 +2,71 @@
 header("Access-Control-Allow-Origin: *");
 include 'config.php';
 
-$token = $_GET['token'];
+$token = $_POST['token'];
+$liked = $_POST['liked'];
+$prev_id = $_POST['prev_id'];
 
-$liked = $_GET['liked'];
-$vote = $_GET['vote'];
-
-$user = R::findOne('users', 'token = ?',  array($token));
+$user = R::findOne('users', 'token = ?', array($token));
 
 // TODO: Переделать на сравнение с последним id в таблице swipe
 if( $user['last_id'] == R::count('swipe') ) { echo json_encode("end.jpg"); }
 	
 else{ 
-	$swipe = R::findOne('swipe', 'status = 1 AND user_id != ? AND id > ?', array($user->id, $user['last_id']));
+	// проверка на первое фото
+	if($liked == 'first') {
+		$swipe = R::findOne('swipe', 'status = 1 AND user_id != ? AND id >= ?', array($user->id, $user->last_id));
+	}
+	else {
+		$swipe = R::findOne('swipe', 'status = 1 AND user_id != ? AND id > ?', array($user->id, $user->last_id));
+	}
+
+	// получаем адрес фото
 	$photoSRC = R::findOne('photos', 'id = ?', array($swipe['photo_id']))['src'];
 
+	// полуаем информацию о хозяине фото
 	$userData = R::findOne('users','id = ?', array($swipe['user_id']));
 	$instagramLink = $userData['instagram'];
 	$profileLink = $userData['username'];
 
-
-	if( $swipe['views_all'] > $min_view_points_for_raiting ) 
-	{
-		$rating = $swipe['likes'] / $swipe['views_all'];
-	}
-	else $rating = 0;
-
 	// заглушка для повторения фото
-	if($swipe['id']==6) {$user->last_id = 0;}
-	else {$user->last_id = $swipe['id'];}
+	$user->last_id = $swipe->id == 6 ? 0 : $swipe->id;
 
-	if($vote > 0) {$user->view_points = ++$user->view_points;}
-	
-	R::store($user);
+	// если фото не первое, то к предыдущему применяется добавление данных в базу
+	if($liked !== 'first'){
+		$swipe_prev = R::findOne('swipe','id= ?',array($prev_id));
 
-	$swipe->views_left = --$swipe->views_left;
-	$swipe->views_all = ++$swipe->views_all;
+		// проверка, обрывает ли ошибка в оценке фото цепь угадываний. Сейчас минимум 20 показов.
+		// и если да, то вычисляется рейтинг фото
+		// если нет, то рейтинг = 0 
+		$rating = $swipe_prev['views_all'] > $min_view_points_for_raiting ? $swipe_prev['likes'] / $swipe_prev['views_all'] : 0;
 
-	if($liked == "like") $swipe->likes = ++$swipe->likes;
+		// если угадал, получает + очко
+		if ( ($liked == "like" && $rating >= 0.6) || ($liked == "dislike" && $rating < 0.6) || $rating == 0 ) {
+			$user->view_points = ++$user->view_points;
+			$guess = 'yes';
+		  } else {
+			$guess = "no";
+		  }
 
-	if($swipe['views_left'] == 0) $swipe->status = 0;
+		// $t1 = $swipe_prev['views_left']--;
+		// $t2 = $swipe_prev['views_all']++;
 
-	R::store($swipe);
+		// $swipe_prev->views_left = $t1;
+		// $swipe_prev->views_all = $t2;
 
-	echo json_encode( array($photoSRC, $instagramLink, $profileLink, $rating) );
+		$swipe_prev->views_left = --$swipe_prev->views_left;
+		$swipe_prev->views_all = ++$swipe_prev->views_all;
+
+		if($liked == "like") $swipe_prev->likes = ++$swipe_prev->likes;
+
+		if($swipe_prev['views_left'] == 0) $swipe_prev->status = 0;
+		
+		R::store($user);
+		R::store($swipe_prev);
+	}
+
+	echo json_encode( array($photoSRC, $instagramLink, $profileLink, $guess, $swipe['id']) );
+	// echo json_encode( array($photoSRC, $instagramLink, $profileLink, $guess, $swipe['id'],"last_id = ".$user['last_id'],$liked,"prev_id = ".$prev_id) );
 	// echo json_encode($photoSRC['src']);
 }
 

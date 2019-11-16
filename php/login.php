@@ -5,8 +5,8 @@ include 'config.php';
 $error_password = "Пароль неверный";
 $error_user_not_found = "Пользователь с таким email не найден";
 
-$email = $_GET["email"];
-$pass = $_GET["pass"];
+$email = $_POST["email"];
+$pass = $_POST["pass"];
 
 $user = R::findOne('users', 'email = ?',  array($email));
 
