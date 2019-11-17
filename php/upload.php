@@ -7,10 +7,24 @@ $maxAllowComressionRatio = 10000; // ширина*длина/размер фай
 $error_ratio = "Недопустимые пропорции изображения. Допустимо не более чем 1 к 2";
 
 // TODO: исправить передачу реального токена
-// $token = $_GET["token"];
-$token = "token";
+$token = $_POST['token'];
+// $token = "token";
 
 $user = R::findOne('users','token = ?',array($token));
+
+// тут ошибка
+
+// if ( isset( $_POST['photo_id']) ){
+// 	$photo = R::findOne('photos','id = ?', array($_POST['photo_id'])));
+// 	$photo->tags = $_POST['tags']);
+
+// 	if ( isset( $_POST['views']) ){
+// 		$swipe = R::dispense( 'swipe' );
+// 		$swipe->photo_id = $_POST['photo_id']);
+// 		$views_left->$_POST['views']);
+// 		$status = 1;
+// 	}
+// }
 
 if( isset( $_POST['my_file_upload'] ) ){  
 	// ВАЖНО! тут должны быть все проверки безопасности передавемых файлов и вывести ошибки если нужно
@@ -48,12 +62,14 @@ if( isset( $_POST['my_file_upload'] ) ){
 	}
 
     if($done_file){
-        $data = array('file' => $done_file ); 
 
         $photo = R::dispense('photos');
         $photo->user_id = $user->id;
         $photo->src = $file_name;
-        R::store($photo);
+		$photo_id = R::store($photo);  
+	
+		$data = array('file' => $done_file , 'photo_id' => $photo_id); 
+
     }else{
         $data = array('error' => 'Ошибка загрузки файлов.');
     }
